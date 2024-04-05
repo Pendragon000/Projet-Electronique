@@ -1,0 +1,17 @@
+void Equation() {
+    srand(time(NULL));
+
+    int premierChiffre = rand() % MAX_TOTAL + 1;
+
+    switch (rand() % 2 + 1) {
+        case 1: {
+            int deuxiemeChiffre = rand() % (MAX_TOTAL - premierChiffre) + 1;
+            sprintf((char*)equation, "%d + %d", premierChiffre, deuxiemeChiffre);
+            break;
+        }
+        case 2: {
+            int deuxiemeChiffre_ = rand() % premierChiffre + 1;
+            sprintf((char*)equation, "%d - %d", premierChiffre, deuxiemeChiffre_);
+            break;
+        }
+    }
