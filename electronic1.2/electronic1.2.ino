@@ -6,48 +6,65 @@
 #define MAX_TOTAL 15
 
 unsigned char equation[20]; // Allocate memory for the equation
-
-void Equation(unsigned char* equation) {
+//génère l'équation selon le MAX_TOTAL qui est le total maximal que l'équation peut avoir
+void Equation(unsigned char* equation, int repArray[3]) {
 
     int premierChiffre = random(1,MAX_TOTAL + 1);
-
+    int rep;
+    int rep2;
+    int rep3;
     switch (random(0,2)) { //determine si l'équation est un soustraction ou un addition
         case 0: { //addition
             int tempMax = MAX_TOTAL - premierChiffre;
             int deuxiemeChiffre = random(1, tempMax +1);
             sprintf((char*)equation, "%d + %d", premierChiffre, deuxiemeChiffre);
+            rep = premierChiffre + deuxiemeChiffre;
             break;
         }
-        case 1: { 
+        case 1: { //soustraction
             int tempMax_ = premierChiffre; 
             int deuxiemeChiffre_ = random(1,tempMax_ + 1);
             sprintf((char*)equation, "%d - %d", premierChiffre, deuxiemeChiffre_);
+            rep = premierChiffre - deuxiemeChiffre_;
             break;
         }
+  }
+
+        //génère les reponse et les place dans un array
+        rep2 = random(rep - 3, rep + 4);
+        rep3 = random(rep - 3, rep + 4);
+        repArray[0] = rep;
+        repArray[1] = rep2;
+        repArray[2] = rep3;
+    
+}
+//change les réponses de place pour empêcher que la bonne réponse soit toujours sur le même bouton
+void shuffle(int arr[], int n) {
+    for (int i = n - 1; i > 0; i--) {
+        int j = random(0,i); // Random index between 0 and i
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
     }
 }
 
 void setup() {
-    // put your setup code here, to run once:
     Serial.begin(9600);
-    // Uncomment desired interface. Currently configured for SPI.
-  //initLCD_I2C(5, 4);
   initLCD_SPI(22, 23, 21);
   //initLCD_RS232(2);
   // put your main code here, to run repeatedly:
-    unsigned char equation[20];
-    Equation(equation);
+  unsigned char equation[20];
+  int arrayReponse[3];
+  Equation(equation,arrayReponse);
+    int testInt = arrayReponse[0];
     delay(1000); // Delay for 1 second
   writeString((unsigned char*)equation);
+  unsigned char test[10];
+  sprintf((char*)test, "%d", testInt);
   setCursor(0x40);
-  Equation(equation);
-  writeString((unsigned char*)equation);
-  Equation(equation);
+  writeString((unsigned char*)test);
   setCursor(0x14);
-  
-  Equation(equation);
   setCursor(0x54);
-  
 }
 
 void loop() {
