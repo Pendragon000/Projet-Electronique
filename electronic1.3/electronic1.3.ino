@@ -1,19 +1,30 @@
 #include <Arduino.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
-
+//constant pour LCD (vien avec le code sur le site du manifacturier)
+#define STARTUP_DELAY 500
+#define RS232_DELAY 100
+#define I2C_DELAY 100
+#define SLAVE_ADDRESS 0x28
+//nos constante
 #define MAX_TOTAL 15
+#define button1PinIn 12
+#define button2PinIn 27
+#define button3PinIn 33
+#define voiturePinOut 18
 
-unsigned char equation[20]; // Allocate memory for the equation
+unsigned char equation[10];
 //génère l'équation selon le MAX_TOTAL qui est le total maximal que l'équation peut avoir
-void Equation(unsigned char* equation, int repArray[3]) {
+void GeneratorEquation(unsigned char* equation, int repArray[3]) {
 
     int premierChiffre = random(1,MAX_TOTAL + 1);
     int rep;
     int rep2;
     int rep3;
-    switch (random(0,2)) { //determine si l'équation est un soustraction ou un addition
+    switch (random(0,2)) //determine si l'équation est un soustraction ou un addition
+    { 
         case 0: { //addition
             int tempMax = MAX_TOTAL - premierChiffre;
             int deuxiemeChiffre = random(1, tempMax +1);
@@ -29,10 +40,17 @@ void Equation(unsigned char* equation, int repArray[3]) {
             break;
         }
   }
-
-        //génère les reponse et les place dans un array
+        //génère les reponses et les place dans un array
         rep2 = random(rep - 3, rep + 4);
+        while(rep == rep2 || rep2 < 0)
+        {
+          rep2 = random(rep - 3, rep + 4);
+        }
         rep3 = random(rep - 3, rep + 4);
+        while(rep == rep3 || rep2 == rep3 || rep3 < 0)
+        {
+          rep3 = random(rep - 3, rep + 4);
+        }
         repArray[0] = rep;
         repArray[1] = rep2;
         repArray[2] = rep3;
@@ -47,88 +65,99 @@ void shuffle(int arr[], int n) {
         arr[j] = temp;
     }
 }
-
-void setup() {
-    Serial.begin(9600);
-  initLCD_SPI(22, 23, 21);
-  //initLCD_RS232(2);
-  // put your main code here, to run repeatedly:
+//affiche l'équation et gère la réponse
+void Main() {
+  clearScreen();
   unsigned char equation[20];
   int arrayReponse[3];
-  Equation(equation,arrayReponse);
-    int testInt = arrayReponse[0];
-    delay(1000); // Delay for 1 second
+  GeneratorEquation(equation,arrayReponse);
+  int bonneReponse = arrayReponse[0];
+  shuffle(arrayReponse,3);
+  setCursor(0x07);
   writeString((unsigned char*)equation);
-  unsigned char test[10];
-  sprintf((char*)test, "%d", testInt);
-  setCursor(0x40);
-  writeString((unsigned char*)test);
-  setCursor(0x14);
-  setCursor(0x54);
+  unsigned char rep1[2];
+  sprintf((char*)rep1, "%d", arrayReponse[0]);
+  setCursor(0x17);
+  writeString((unsigned char*)"A:");
+  writeString((unsigned char*)rep1);
+  unsigned char rep2[2];
+  sprintf((char*)rep2, "%d", arrayReponse[1]);
+  setCursor(0x1c);
+  writeString((unsigned char*)"B:");
+  writeString((unsigned char*)rep2);
+  unsigned char rep3[2];
+  sprintf((char*)rep3, "%d", arrayReponse[2]);
+  setCursor(0x21);
+  writeString((unsigned char*)"C:");
+  writeString((unsigned char*)rep3);
+  bool estBonneReponse = false;
+  bool reponseEstPasChoisi = true;
+  while(reponseEstPasChoisi)
+  {
+    int btnState1 = digitalRead(button1PinIn);
+    int btnState2 = digitalRead(button2PinIn);
+    int btnState3 = digitalRead(button3PinIn);
+    if(btnState1 == LOW){
+      if(arrayReponse[0] == bonneReponse){
+        estBonneReponse = true;
+      }
+      reponseEstPasChoisi = false;
+    }
+    if(btnState2 == LOW){
+      if(arrayReponse[1] == bonneReponse){
+        estBonneReponse = true;
+      }
+      reponseEstPasChoisi = false;
+    }
+    if(btnState3 == LOW){
+      if(arrayReponse[2] == bonneReponse){
+        estBonneReponse = true;
+      }
+      reponseEstPasChoisi = false;
+    }
+  }
+  clearScreen();
+  if(estBonneReponse){
+    setCursor(0x43);
+    writeString((unsigned char*)"Bonne Reponse!");
+    clearScreen();
+    setCursor(0x49);
+    writeString((unsigned char*)"3");
+    delay(1000);
+    clearScreen();
+    setCursor(0x49);
+    writeString((unsigned char*)"2");
+    delay(1000);
+    clearScreen();
+    setCursor(0x49);
+    writeString((unsigned char*)"1");
+    delay(1000);
+    clearScreen();
+    setCursor(0x46);
+    writeString((unsigned char*)"GO!!!!!");
+    digitalWrite(voiturePinOut,HIGH);
+    delay(5000);
+    digitalWrite(voiturePinOut,LOW);
+  }
+  else{
+    setCursor(0x42);
+    writeString((unsigned char*)"Mauvaise Reponse");
+  }
+  delay(1500);
+} 
+
+void setup(){
+  Serial.begin(9600);
+  initLCD_SPI(22, 23, 21);
+  pinMode(button1PinIn, INPUT_PULLUP);
+  pinMode(button2PinIn, INPUT_PULLUP);
+  pinMode(button3PinIn, INPUT_PULLUP);
+  pinMode(voiturePinOut, OUTPUT);
 }
 
 void loop() {
-    
+  Main();
 }
-/***********************************************************
- * Serial_LCD.ino
- * This code was written to interface and Arduino UNO with NHD serial LCDs.
- * 
- * Program Loop:
- * 1. Write "Newhaven Display--" on line 1
- * 2. Write " - 4x20  Characters" on line 2
- * 3. Write " - Serial LCD"
- * 4. Write "  -> I2C, SPI, RS232"
- * 
- * (c)2022 Newhaven Display International, LLC.
- * 
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- 
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- ***********************************************************/
-
-/**
- * I2C Wiring Reference:
- * 
- * - Arduino Pin 5 (SCL) to LCD J2 Pin 3 (SCL)
- * - Arduino Pin 4 (SDA) to LCS J2 Pin 4 (SDA)
- * - GND to LCD J2 Pin 5 (VSS)
- * - 5V to LCD J2 Pin 6 (VDD)
- */
-
-/**
- * SPI Wiring Reference:
- * 
- * - Arduino Pin 5 (SCL) to LCD J2 Pin 3 (SCK)
- * - Arduino Pin 4 (SDI) to LCD J2 Pin 4 (SDI)
- * - Arduino Pin 3 (/CS) to LCD J2 Pin 1 (SPISS)
- * - GND to LCD J2 Pin 5 (VSS)
- * - 5V to LCD J2 Pin 6 (VDD)
- */
-
-/**
- * RS232 Wiring Reference:
- * 
- * - Arduino Pin 2 (TX) to LCD J1 Pin 1 (RX)
- * - GND to LCD J1 Pin 2 (VSS)
- * - 5V to LCD J1 Pin 3 (VDD)
- */
-
-#include <stdint.h>
-#include <stdlib.h>
-
-#define STARTUP_DELAY 500
-
-#define RS232_DELAY 100
-
-#define I2C_DELAY 100
-#define SLAVE_ADDRESS 0x28
 
 // SPI Interface
 uint8_t _SCL; // 5
